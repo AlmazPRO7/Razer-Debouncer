@@ -1,2 +1,2 @@
-# RazerDebouncer
+# Razer Debouncer
 Razzer Debbbounccer
