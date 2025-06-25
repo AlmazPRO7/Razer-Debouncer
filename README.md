@@ -34,8 +34,7 @@ pip install -r requirements.txt      # pystray pillow keyboard
 python bw3_debounce.py --debug       # первый тест
 
 Заметите в консоли
-arduino
-Копировать
+
 Hook ID = 12345678
 Started message loop…
 DOWN  48 Δ95.0 ms
