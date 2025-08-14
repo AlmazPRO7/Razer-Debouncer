@@ -1,0 +1,12 @@
+sandbox:
+  filesystem: danger-full-access
+  network: on
+  approvals: never
+
+workspace:
+  # ВАЖНО: CLI должен быть запущен с корнем в этом каталоге
+  root: /mnt/c/Razer_Deboounce
+
+notes:
+  - Перезапустите Codex CLI из корня проекта (`cd /mnt/c/Razer_Deboounce`).
+  - Эти настройки описывают желаемую политику; фактическое применение зависит от harness.
