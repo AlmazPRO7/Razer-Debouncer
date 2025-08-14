@@ -1,0 +1,29 @@
+agents:
+  - name: dev-agent
+    description: Поддержка и развитие скрипта дебаунса, обновление документации
+    inputs:
+      - code: bw3_debounce3.py
+      - spec: agents/keyboard-debounce-agent.md
+      - logs: "%APPDATA%/bw3_chatter.log"
+    outputs:
+      - code: bw3_debounce3.py
+      - docs: docs/*, AGENTS.md, agents/*
+  - name: qa-agent
+    description: Проверка удержания клавиш, сочетаний, регрессий
+    checklist: agents/keyboard-debounce-agent.md
+  - name: release-agent
+    description: Сборка исполняемых файлов, обновление CHANGELOG
+    build:
+      - spec: bw3_debounce.spec
+      - artifacts: dist/
+  - name: support-agent
+    description: Сбор обратной связи, экспорт логов, воспроизведение
+policies:
+  coding:
+    minimal_changes: true
+    keep_style: true
+  sandbox:
+    desired:
+      filesystem: danger-full-access
+      network: on
+      approvals: on-request
