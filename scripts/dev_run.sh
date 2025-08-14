@@ -8,6 +8,8 @@ cd "$ROOT"
 
 if command -v python >/dev/null 2>&1; then
   PY=python
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
 elif command -v py >/dev/null 2>&1; then
   PY=py
 else
@@ -16,4 +18,3 @@ else
 fi
 
 exec "$PY" bw3_debounce3.py --no-startup "$@"
-

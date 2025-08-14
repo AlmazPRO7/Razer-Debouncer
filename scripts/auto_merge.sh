@@ -62,6 +62,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+export GIT_SSH_COMMAND=${GIT_SSH_COMMAND:-"ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"}
 echo "[auto-merge] Fetching origin..."
 git fetch origin --prune
 
@@ -93,4 +94,3 @@ if [[ $PUSH -eq 1 ]]; then
 fi
 
 echo "[auto-merge] Done"
-
