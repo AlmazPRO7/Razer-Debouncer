@@ -7,3 +7,12 @@ dist/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+.secrets/
+.ssh/
+# Local diagnostic outputs (network/git checks)
+fetch*.out
+fetch*.err
+lsremote*.out
+lsremote*.err
+ssh*.out
+ssh*.err
