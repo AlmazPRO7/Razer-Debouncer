@@ -3,7 +3,7 @@
 Этот документ помогает быстро открыть 2 панели: слева — чат Codex (cx), справа — ваш шелл.
 
 ## Windows Terminal (две панели одной командой)
-- Рекомендация: `scripts/open_dev.ps1` — единый launcher.
+- Рекомендация: `scripts/open_dev.ps1` — единый launcher; автоматическая установка: `scripts/install_windows_env.ps1` (создаст профиль WT и ярлык на рабочем столе).
 - Альтернатива: `scripts/wt_open.ps1` (напрямую через wt.exe).
 - Запуск: `powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\open_dev.ps1`
 - Что делает: открывает Windows Terminal (`wt.exe`) с двумя панелями в корне репо:
@@ -26,7 +26,7 @@
 Путь `startingDirectory` укажите под вашу систему. Для двух панелей используйте скрипт `wt_open.ps1`.
 
 ## tmux (WSL/Linux)
-- Рекомендация: `scripts/open_dev.sh` — единый launcher (предпочтительно откроет tmux-сессию).
+- Рекомендация: `scripts/open_dev.sh` — единый launcher (предпочтительно откроет tmux-сессию); автоматическая установка автозапуска: `scripts/install_wsl_env.sh`.
 - Альтернатива: `scripts/tmux_session.sh [session_name]` напрямую.
 - Запуск: `./scripts/open_dev.sh`.
 - Состав:
