@@ -9,7 +9,7 @@ bw3_debounce.py – v4.6  (2025‑08‑09)
 • Мягкая обработка модификаторов: пред‑повторная задержка к ним не применяется.
 """
 
-import os, sys, json, time, threading, statistics, argparse, ctypes, logging
+import os, sys, json, time, threading, statistics, argparse, ctypes, logging, atexit
 from ctypes import wintypes
 from logging.handlers import RotatingFileHandler
 # Ленивая загрузка GUI/иконок: в self-test/WSL они не нужны
@@ -47,6 +47,7 @@ class KBDLLHOOKSTRUCT(ctypes.Structure):
                 ("dwExtraInfo", ULONG_PTR)]
 
 user32 = None
+_singleton_handle = None
 
 def _init_winapi():
     global user32
@@ -72,6 +73,52 @@ def _init_winapi():
     except Exception:
         user32 = None
         return False
+
+def ensure_single_instance(name: str = None):
+    """Гарантирует единственный экземпляр процесса (Windows), иначе завершает.
+    Возвращает True, если это первый экземпляр, False — если другой уже запущен.
+    На не-Windows просто возвращает True.
+    """
+    global _singleton_handle
+    if os.name != 'nt':
+        return True
+    try:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        # HANDLE CreateMutexW(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR)
+        kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+
+        if not name:
+            # Общий глобальный мьютекс для всего процесса
+            name = 'Global\\BW3_Debounce_Singleton'
+        h = kernel32.CreateMutexW(None, False, name)
+        if not h:
+            # если не удалось создать — не мешаем запуску, но логируем
+            err = ctypes.get_last_error()
+            logger.info("CreateMutex failed, err=%s", err)
+            return True
+        # ERROR_ALREADY_EXISTS = 183
+        already = (ctypes.get_last_error() == 183)
+        if already:
+            # Закроем дескриптор, чтобы не держать мьютекс
+            try:
+                kernel32.CloseHandle(h)
+            except Exception:
+                pass
+            return False
+        _singleton_handle = h
+
+        def _release():
+            try:
+                kernel32.CloseHandle(_singleton_handle)
+            except Exception:
+                pass
+        atexit.register(_release)
+        return True
+    except Exception:
+        return True
 
 # ───────── файлы/лог ─────────
 APPDATA = os.getenv("APPDATA") or os.path.expanduser("~\\AppData\\Roaming")
@@ -856,10 +903,23 @@ def main():
     ap.add_argument("--no-startup", action="store_true", help="Не добавлять в автозапуск")
     ap.add_argument("--no-rate-limit-vks", type=str, default="", help="CSV VK-кодов без ограничения повтора (напр., 8 для Backspace)")
     ap.add_argument("--selftest", action="store_true", help="Запустить самотест без хука/GUI (консольный вывод)")
+    ap.add_argument("--allow-multiple", action="store_true", help="Разрешить запуск нескольких копий (отладка)")
     args = ap.parse_args()
 
     if args.selftest:
         return run_selftest(args)
+
+    # Единственный экземпляр (не мешаем selftest)
+    if not args.allow_multiple:
+        if not ensure_single_instance():
+            msg = "Уже запущен основной процесс BW3 Debounce. Повторный экземпляр завершён."
+            try:
+                if _init_winapi() and hasattr(ctypes, 'windll'):
+                    ctypes.windll.user32.MessageBoxW(None, msg, "BW3 Debounce", 0x00000040)
+            except Exception:
+                pass
+            print(msg)
+            return 0
 
     if not is_admin(): elevate()
     if not args.no_startup: set_autostart(True)
