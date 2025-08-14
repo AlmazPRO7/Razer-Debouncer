@@ -20,7 +20,8 @@
 - Рекомендуется 2 вкладки/панели терминала:
   1) Codex CLI (через `codex_run.*`) для диалога и автоматических действий.
   2) Обычный шелл для ручных экспериментов (`devrun`, `devtest`, `git log`, и т.д.).
-- Windows Terminal: создайте профиль с рабочей директорией на корень репо и командой запуска `powershell.exe -NoLogo -NoProfile -Command \". scripts/codex_env.ps1; . scripts/aliases.ps1; cx --project .\"`. См. готовые профили и `wt_open.ps1` в `docs/TERMINAL_PROFILES.md`.
+- Windows: для удобства используйте `scripts/open_dev.ps1` (откроет две панели в Windows Terminal; при его отсутствии — две PowerShell). См. также `docs/TERMINAL_PROFILES.md`.
+- WSL/Linux: используйте `scripts/open_dev.sh` (tmux‑сессия или одиночная оболочка). См. также `docs/TERMINAL_PROFILES.md`.
 - tmux/screen (WSL/Linux): используйте сплит‑панели, в одной из которых запущен `cx`, в другой — обычный шелл.
 
 ## 4. Полезные команды/алиасы
