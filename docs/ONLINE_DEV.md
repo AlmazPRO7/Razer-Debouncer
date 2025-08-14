@@ -42,10 +42,14 @@
 
 Варианты включения:
 - Разово после завершения работы: `./scripts/git_auto_sync.sh` или `.\\scripts\\git_auto_sync.ps1`.
-- Через обёртку запуска CLI:
-  - Bash: `AFTER_SUCCESS_CMD=./scripts/git_auto_sync.sh ./scripts/auto_run.sh codex` (пример — если у вас есть бинарь/алиас `codex`).
-  - PowerShell: `; $env:AFTER_SUCCESS_CMD = ".\\scripts\\git_auto_sync.ps1"; .\\scripts\\auto_run.ps1 codex`.
-- Через конфиг `.codex/config.yaml` (раздел `hooks.post_task`) — для информации/соглашения команды; реализация вызова зависит от вашей обёртки запуска.
+- Обёртки «всё‑в‑одном» для Codex CLI:
+  - Bash/WSL: `./scripts/codex_run.sh codex [опции Codex]`
+  - PowerShell: `.\\scripts\\codex_run.ps1 codex [опции Codex]`
+  Эти обёртки подхватывают окружение из `scripts/codex_env.*`, запускают указанную команду и после успеха вызывают авто‑sync.
+- Через универсальную обёртку `auto_run` с переменной `AFTER_SUCCESS_CMD`:
+  - Bash: `AFTER_SUCCESS_CMD=./scripts/git_auto_sync.sh ./scripts/auto_run.sh codex`
+  - PowerShell: `$env:AFTER_SUCCESS_CMD = ".\\scripts\\git_auto_sync.ps1"; .\\scripts\\auto_run.ps1 codex`
+- Через конфиг `.codex/config.yaml` (раздел `hooks.post_task`) — соглашение команды; фактический вызов выполняет ваша обёртка запуска.
 
 Примечания безопасности:
 - Скрипт использует `--force-with-lease` при пуше фича‑ветки после ребейза.

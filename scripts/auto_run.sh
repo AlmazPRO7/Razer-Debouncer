@@ -19,6 +19,11 @@ rc=$?
 set -e
 
 if [[ $rc -eq 0 ]]; then
+  # Если задан пост-команда после успеха — выполнить её
+  if [[ -n "${AFTER_SUCCESS_CMD:-}" ]]; then
+    echo "[auto_run] AFTER_SUCCESS_CMD → ${AFTER_SUCCESS_CMD}"
+    eval "${AFTER_SUCCESS_CMD}"
+  fi
   exit 0
 fi
 
@@ -36,4 +41,3 @@ fi
 
 # Иные ошибки — отдаем исходный код возврата
 exit $rc
-

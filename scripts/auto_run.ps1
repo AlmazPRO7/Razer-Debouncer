@@ -20,7 +20,14 @@ $stderr = $p.StandardError.ReadToEnd()
 $p.WaitForExit()
 $rc = $p.ExitCode
 
-if ($rc -eq 0) { exit 0 }
+if ($rc -eq 0) {
+  # Выполнить пост-команду, если задана
+  if ($env:AFTER_SUCCESS_CMD) {
+    Write-Host "[auto_run] AFTER_SUCCESS_CMD → $($env:AFTER_SUCCESS_CMD)"
+    & powershell -NoLogo -NoProfile -Command $env:AFTER_SUCCESS_CMD
+  }
+  exit 0
+}
 
 if ($stderr -match 'Temporary failure in name resolution' -or \
     $stderr -match 'Could not resolve hostname' -or \
@@ -37,4 +44,3 @@ if ($stderr -match 'Temporary failure in name resolution' -or \
 }
 
 exit $rc
-
