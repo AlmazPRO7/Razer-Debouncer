@@ -34,6 +34,23 @@
 - Скрипт сам выполнит `git fetch`, `git pull --rebase`, `git rebase`, опционально быстрый тест и `git merge --ff-only`.
 - При грязном дереве используется auto‑stash/unstash.
 
+## Автосинхронизация после задачи (Codex CLI)
+- Скрипты: `scripts/git_auto_sync.sh` (Bash/WSL) и `scripts/git_auto_sync.ps1` (PowerShell).
+- Что делает: авто‑стейдж/коммит (если есть изменения) → `fetch` → `pull --rebase` →
+  - если текущая ветка `main` — `push` в `origin/main`;
+  - если фича‑ветка — вызовет `scripts/auto_merge.(sh|ps1)` для ребейза на `main`, fast‑forward‑мерджа `main` и пуша обеих веток.
+
+Варианты включения:
+- Разово после завершения работы: `./scripts/git_auto_sync.sh` или `.\\scripts\\git_auto_sync.ps1`.
+- Через обёртку запуска CLI:
+  - Bash: `AFTER_SUCCESS_CMD=./scripts/git_auto_sync.sh ./scripts/auto_run.sh codex` (пример — если у вас есть бинарь/алиас `codex`).
+  - PowerShell: `; $env:AFTER_SUCCESS_CMD = ".\\scripts\\git_auto_sync.ps1"; .\\scripts\\auto_run.ps1 codex`.
+- Через конфиг `.codex/config.yaml` (раздел `hooks.post_task`) — для информации/соглашения команды; реализация вызова зависит от вашей обёртки запуска.
+
+Примечания безопасности:
+- Скрипт использует `--force-with-lease` при пуше фича‑ветки после ребейза.
+- Для корректной работы SSH задайте окружение через `scripts/git_env.(sh|ps1)`.
+
 ## Политики и рекомендации
 - CI/CD в облаке не используем. Проверки запускаем локально.
 - Логи храним локально, секреты/ключи в репозиторий не коммитим.
