@@ -27,6 +27,13 @@
 - Самотест без хука/GUI: `./scripts/dev_test.sh` или `./scripts/dev_test.ps1`
 - Запуск приложения (dev): `./scripts/dev_run.sh` или `./scripts/dev_run.ps1 -Debug`
 
+## Локальный auto-merge (без GitHub Actions)
+- Авто‑слияние делаем локально: ребейзим фичу на `main` и fast‑forward‑мерджим `main`.
+- Bash: `./scripts/auto_merge.sh [--feature <ветка>] [--main main] [--push]`
+- PowerShell: `.\\scripts\\auto_merge.ps1 -Feature <ветка> -Main main -Push`
+- Скрипт сам выполнит `git fetch`, `git pull --rebase`, `git rebase`, опционально быстрый тест и `git merge --ff-only`.
+- При грязном дереве используется auto‑stash/unstash.
+
 ## Политики и рекомендации
 - CI/CD в облаке не используем. Проверки запускаем локально.
 - Логи храним локально, секреты/ключи в репозиторий не коммитим.
