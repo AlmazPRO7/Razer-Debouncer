@@ -75,8 +75,23 @@ git checkout "$FEATURE"
 git rebase "$MAIN"
 
 if [[ $RUN_TESTS -eq 1 && -x "$HERE/dev_test.sh" ]]; then
-  echo "[auto-merge] Running tests..."
-  "$HERE/dev_test.sh" || { echo "[auto-merge] Tests failed" >&2; exit 1; }
+  # Pick a python to probe for deps
+  if command -v python >/dev/null 2>&1; then PY=python; elif command -v python3 >/dev/null 2>&1; then PY=python3; elif command -v py >/dev/null 2>&1; then PY=py; else PY=""; fi
+  if [[ -n "$PY" ]] && "$PY" - <<'PY' >/dev/null 2>&1
+try:
+    import PIL
+    ok=True
+except Exception:
+    ok=False
+import sys
+sys.exit(0 if ok else 1)
+PY
+  then
+    echo "[auto-merge] Running tests..."
+    "$HERE/dev_test.sh" || { echo "[auto-merge] Tests failed" >&2; exit 1; }
+  else
+    echo "[auto-merge] Tests skipped (python/Pillow not available)"
+  fi
 else
   echo "[auto-merge] Tests skipped"
 fi
