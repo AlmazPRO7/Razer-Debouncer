@@ -1,4 +1,5 @@
 Pillow>=10.0
 pystray>=0.19
-pywin32>=306
-pyinstaller>=6.0
+# Windows-only deps (не ставятся в Ubuntu)
+pywin32>=306; sys_platform == "win32"
+pyinstaller>=6.0; sys_platform == "win32"

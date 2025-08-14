@@ -11,9 +11,9 @@
 - Сборка standalone‑исполняемого файла через PyInstaller.
 
 ## Быстрый старт
-- Требования: Windows 10/11, Python 3.9+ (рекомендуется 3.10+), PowerShell.
-- Настройте окружение и зависимости: см. `docs/DEVELOPMENT.md`.
-- Сборка релиза: см. раздел «Сборка» в `docs/DEVELOPMENT.md`.
+- Windows: см. `docs/DEVELOPMENT.md` (рекомендуется Python 3.11).
+- Ubuntu/WSL (разработка, автотесты): см. `docs/UBUNTU_SETUP.md` и `docs/WSL_SETUP.md`.
+- Сборка релиза (PyInstaller/Windows): см. раздел «Сборка» в `docs/DEVELOPMENT.md`.
 
 ## Навигация по документации
 - Руководство разработчика: `docs/DEVELOPMENT.md`
