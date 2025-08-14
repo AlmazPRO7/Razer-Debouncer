@@ -224,7 +224,8 @@ class Debouncer:
                  up_guard_max_ms=80, up_guard_step_ms=7,
                  repeat_jitter_ms=5,
                  no_rate_limit_vks=None,
-                 chord_guard_ms=10):
+                 chord_guard_ms=10,
+                 chord_disable_post_up=True):
         self.base         = base_ms/1000.0
         self.repeat_delay = (repeat_delay_ms or read_system_repeat_delay_ms())/1000.0
         # Повторный интервал: если не задан, оценим по системному KeyboardSpeed
@@ -248,6 +249,7 @@ class Debouncer:
         self.repeat_jitter= max(0.0, repeat_jitter_ms/1000.0)
         # Минимальное окно пост‑UP при зажатом модификаторе (для аккордов Ctrl/Shift/Alt/Win + X)
         self.chord_guard  = max(0.0, chord_guard_ms/1000.0)
+        self.chord_disable_post_up = bool(chord_disable_post_up)
 
         self.th   = load_cfg()   # пороги per‑key (scanCode:str → секунд)
         self.last = {}           # время последнего good DOWN
@@ -580,29 +582,37 @@ def install_hook(deb: Debouncer):
                     # Пост‑UP защита: если новый первый DOWN приходит слишком близко после UP — блокируем как дребезг
                     # Небольшое адаптивное окно после UP для фильтрации послевыборочного дребезга.
                     guard_thr = deb.up_guard_win(sc, vk)
-                    # Если зажат любой модификатор и текущая клавиша — не модификатор,
-                    # ослабляем окно до узкого порога mod_bounce, чтобы аккорды (Ctrl/Shift/Alt/Win + X)
-                    # срабатывали мгновенно, но при этом продолжали резать явный дребезг.
+                    # Контекст аккорда: зажат модификатор, текущая клавиша — не модификатор
+                    is_chord_ctx = False
                     try:
-                        if (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk):
-                            # Для аккордов максимально снижаем окно пост‑UP до узкого порога
-                            # (быстрее срабатывают бинды Ctrl/Shift/Alt/Win + X)
-                            guard_thr = min(guard_thr, deb.chord_guard)
+                        is_chord_ctx = (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk)
                     except Exception:
-                        pass
-                    lu = deb.last_up.get(sc)
-                    if lu is not None:
-                        gap = now - lu
-                        if gap < guard_thr:
+                        is_chord_ctx = False
+                    if is_chord_ctx and deb.chord_disable_post_up:
+                        # В аккордах полностью отключаем пост‑UP блок для первого DOWN — максимальная отзывчивость
+                        try:
+                            logger.info("CHORD_BYPASS %s", sc)
+                        except Exception:
+                            pass
+                    else:
+                        # Обычный режим: мягкое пост‑UP окно, для аккордов сужаем его
+                        if is_chord_ctx:
+                            guard_thr = min(guard_thr, deb.chord_guard)
                             if deb.debug:
-                                print(f"BLOCK_POST_UP {sc} Δ{gap*1000:.1f} ms (thr {guard_thr*1000:.1f})")
-                                logger.info("BLOCK_POST_UP %s Δ%.1f ms", sc, gap*1000)
-                            # усилить персональное пост‑UP окно для этой клавиши
-                            deb.inc_up_guard(sc)
-                            return 1
-                        # если прошли едва‑едва и интервал подозрительно короткий — аккуратно расширим окно
-                        if gap < 0.045:  # 45 мс — типичная длительность «чирпа»
-                            deb.bump_up_guard_to(sc, gap + 0.010)
+                                print(f"CHORD_GUARD {sc} thr={guard_thr*1000:.1f}ms")
+                        lu = deb.last_up.get(sc)
+                        if lu is not None:
+                            gap = now - lu
+                            if gap < guard_thr:
+                                if deb.debug:
+                                    print(f"BLOCK_POST_UP {sc} Δ{gap*1000:.1f} ms (thr {guard_thr*1000:.1f})")
+                                    logger.info("BLOCK_POST_UP %s Δ%.1f ms", sc, gap*1000)
+                                # усилить персональное пост‑UP окно для этой клавиши
+                                deb.inc_up_guard(sc)
+                                return 1
+                            # если прошли едва‑едва и интервал подозрительно короткий — аккуратно расширим окно
+                            if gap < 0.045:  # 45 мс — типичная длительность «чирпа»
+                                deb.bump_up_guard_to(sc, gap + 0.010)
 
                     # Первое нажатие — пропускаем (комбинации работают мгновенно)
                     deb.pressed.add(sc)
@@ -901,6 +911,7 @@ def main():
     ap.add_argument("--up-guard-max", type=int, default=80, help="Максимум адаптивного пост‑UP окна, мс")
     ap.add_argument("--up-guard-step", type=int, default=7, help="Шаг изменения пост‑UP окна, мс")
     ap.add_argument("--no-startup", action="store_true", help="Не добавлять в автозапуск")
+    ap.add_argument("--no-chord-bypass", action="store_true", help="Отключить ускорение аккордов (Ctrl/Shift/Alt/Win + X)")
     ap.add_argument("--no-rate-limit-vks", type=str, default="", help="CSV VK-кодов без ограничения повтора (напр., 8 для Backspace)")
     ap.add_argument("--selftest", action="store_true", help="Запустить самотест без хука/GUI (консольный вывод)")
     ap.add_argument("--allow-multiple", action="store_true", help="Разрешить запуск нескольких копий (отладка)")
@@ -957,7 +968,8 @@ def main():
                     up_guard_step_ms=args.up_guard_step,
                     repeat_jitter_ms=args.repeat_jitter,
                     no_rate_limit_vks=vks,
-                    debug=args.debug)
+                    debug=args.debug,
+                    chord_disable_post_up=(not args.no_chord_bypass))
 
     hook_id = install_hook(deb)
     if not hook_id:
