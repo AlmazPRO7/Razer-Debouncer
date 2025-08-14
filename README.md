@@ -23,6 +23,7 @@
 - История изменений: `docs/CHANGELOG.md`
 - Обзор ролей/процессов: `AGENTS.md`, папка `agents/`
 - Онлайн‑режим разработки и git: `docs/ONLINE_DEV.md`
+- Рабочий процесс чат ↔ терминал: `docs/CLI_WORKFLOW.md`
 
 ## Конфигурация
 - Хранится в `%APPDATA%/bw3_chatter_cfg.json` (персональные пороги и параметры).

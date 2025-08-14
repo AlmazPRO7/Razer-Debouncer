@@ -15,12 +15,15 @@ if [[ -f "$HERE/codex_env.sh" ]]; then
 fi
 
 if [[ $# -eq 0 ]]; then
-  echo "Использование: scripts/codex_run.sh <команда Codex> [аргументы...]" >&2
-  echo "Пример: scripts/codex_run.sh codex --project ." >&2
-  exit 2
+  if command -v "$CODEX_CMD" >/dev/null 2>&1; then
+    set -- "$CODEX_CMD" --project .
+  else
+    echo "Использование: scripts/codex_run.sh <команда Codex> [аргументы...]" >&2
+    echo "Пример: scripts/codex_run.sh codex --project ." >&2
+    exit 2
+  fi
 fi
 
 export AFTER_SUCCESS_CMD="${AFTER_SUCCESS_CMD:-$HERE/git_auto_sync.sh}"
 
 exec "$HERE/auto_run.sh" "$@"
-

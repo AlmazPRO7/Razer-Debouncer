@@ -13,9 +13,9 @@ try {
   if (Test-Path $envPath) { . $envPath }
 
   if (-not $ArgsRest -or $ArgsRest.Count -eq 0) {
-    Write-Error "Использование: scripts/codex_run.ps1 <команда Codex> [аргументы...]"
-    Write-Host "Пример: scripts/codex_run.ps1 codex --project ."
-    exit 2
+    $cmd = $env:CODEX_CMD; if (-not $cmd) { $cmd = 'codex' }
+    # Попробуем вызвать дефолтную команду с --project .
+    $ArgsRest = @($cmd, '--project', '.')
   }
 
   if (-not $env:AFTER_SUCCESS_CMD) {
@@ -27,4 +27,3 @@ try {
 } finally {
   Pop-Location | Out-Null
 }
-
