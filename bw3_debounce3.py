@@ -176,7 +176,8 @@ class Debouncer:
                  down_guard_ms=40, debug=False,
                  up_guard_max_ms=80, up_guard_step_ms=7,
                  repeat_jitter_ms=5,
-                 no_rate_limit_vks=None):
+                 no_rate_limit_vks=None,
+                 chord_guard_ms=10):
         self.base         = base_ms/1000.0
         self.repeat_delay = (repeat_delay_ms or read_system_repeat_delay_ms())/1000.0
         # Повторный интервал: если не задан, оценим по системному KeyboardSpeed
@@ -198,6 +199,8 @@ class Debouncer:
         self.up_guard_step= max(0.001, up_guard_step_ms/1000.0)
         # Допуск на системный джиттер таймингов авто‑повтора (мс → сек)
         self.repeat_jitter= max(0.0, repeat_jitter_ms/1000.0)
+        # Минимальное окно пост‑UP при зажатом модификаторе (для аккордов Ctrl/Shift/Alt/Win + X)
+        self.chord_guard  = max(0.0, chord_guard_ms/1000.0)
 
         self.th   = load_cfg()   # пороги per‑key (scanCode:str → секунд)
         self.last = {}           # время последнего good DOWN
@@ -226,6 +229,21 @@ class Debouncer:
         # Тема и prefs
         prefs = load_prefs()
         self.theme = prefs.get('theme', 'light')
+        # Отложенное сохранение per‑key порогов, чтобы не писать в файл на каждый блок
+        self._cfg_dirty = False
+        self._last_save = 0.0
+
+    def maybe_save_cfg(self, now=None, force=False):
+        try:
+            if now is None:
+                now = time.perf_counter()
+            if self._cfg_dirty and (force or (now - self._last_save) >= 0.5):
+                save_cfg(self.th)
+                self._cfg_dirty = False
+                self._last_save = now
+        except Exception:
+            # Безопасный фолбэк — не мешаем хуку
+            self._cfg_dirty = False
 
     def mark_block(self):
         self.last_block_ts = time.perf_counter()
@@ -520,15 +538,18 @@ def install_hook(deb: Debouncer):
                     # срабатывали мгновенно, но при этом продолжали резать явный дребезг.
                     try:
                         if (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk):
-                            guard_thr = min(guard_thr, deb.mod_bounce)
+                            # Для аккордов максимально снижаем окно пост‑UP до узкого порога
+                            # (быстрее срабатывают бинды Ctrl/Shift/Alt/Win + X)
+                            guard_thr = min(guard_thr, deb.chord_guard)
                     except Exception:
                         pass
                     lu = deb.last_up.get(sc)
                     if lu is not None:
                         gap = now - lu
                         if gap < guard_thr:
-                            if deb.debug: print(f"BLOCK_POST_UP {sc} Δ{gap*1000:.1f} ms (thr {guard_thr*1000:.1f})")
-                            logger.info("BLOCK_POST_UP %s Δ%.1f ms", sc, gap*1000)
+                            if deb.debug:
+                                print(f"BLOCK_POST_UP {sc} Δ{gap*1000:.1f} ms (thr {guard_thr*1000:.1f})")
+                                logger.info("BLOCK_POST_UP %s Δ%.1f ms", sc, gap*1000)
                             # усилить персональное пост‑UP окно для этой клавиши
                             deb.inc_up_guard(sc)
                             return 1
@@ -554,8 +575,8 @@ def install_hook(deb: Debouncer):
                         pass
                     # также понемногу уменьшаем персональное пост‑UP окно
                     deb.dec_up_guard(sc)
-                    if deb.debug: print(f"DOWN first sc={sc} vk={vk}")
-                    return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
+                        if deb.debug: print(f"DOWN first sc={sc} vk={vk}")
+                        return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
 
                 # Повторный DOWN до UP
                 dt_last  = now - deb.last.get(sc, now)
@@ -569,8 +590,9 @@ def install_hook(deb: Debouncer):
                     # Для модификаторов не применяем пред‑повторную задержку:
                     # режем только явный дребезг < mod_bounce.
                     if dt_last < deb.mod_bounce:
-                        if deb.debug: print(f"BLOCK_MOD_BOUNCE {sc} Δ{dt_last*1000:.1f} ms")
-                        logger.info("BLOCK_MOD_BOUNCE %s Δ%.1f ms", sc, dt_last*1000)
+                        if deb.debug:
+                            print(f"BLOCK_MOD_BOUNCE {sc} Δ{dt_last*1000:.1f} ms")
+                            logger.info("BLOCK_MOD_BOUNCE %s Δ%.1f ms", sc, dt_last*1000)
                         # Обновим last, чтобы не спамить одинаковыми Δ
                         deb.last[sc] = now
                         return 1
@@ -586,26 +608,30 @@ def install_hook(deb: Debouncer):
                         deb.cnt[sc] = deb.cnt.get(sc,0)+1
                         if deb.cnt[sc] % deb.BURST == 0 and deb.win(sc)*1000 < deb.MAX_MS:
                             deb.th[sc] = min(deb.MAX_MS/1000.0, deb.win(sc)+deb.STEP_MS/1000.0)
-                            save_cfg(deb.th)
-                        if deb.debug: print(f"BLOCK_BOUNCE {sc} Δ{dt_last*1000:.1f} ms")
-                        logger.info("BLOCK_BOUNCE %s Δ%.1f ms", sc, dt_last*1000)
+                            deb._cfg_dirty = True
+                        if deb.debug:
+                            print(f"BLOCK_BOUNCE {sc} Δ{dt_last*1000:.1f} ms")
+                            logger.info("BLOCK_BOUNCE %s Δ%.1f ms", sc, dt_last*1000)
                         deb.mark_block()
                         deb.last[sc] = now  # сброс Δ, чтобы не копить одинаковые пред‑повторы
                         # адаптивно увеличим порог для проблемной клавиши
                         if deb.win(sc)*1000 < deb.MAX_MS:
                             deb.th[sc] = min(deb.MAX_MS/1000.0, deb.win(sc)+deb.STEP_MS/1000.0)
-                            save_cfg(deb.th)
+                            deb._cfg_dirty = True
+                        deb.maybe_save_cfg(now)
                         deb.inc_up_guard(sc)
                         return 1
                     else:
                         # Повторный DOWN до начала автоповтора — не норма → блок
-                        if deb.debug: print(f"BLOCK_PREDELAY {sc} Δ{dt_last*1000:.1f} ms")
-                        logger.info("BLOCK_PREDELAY %s Δ%.1f ms", sc, dt_last*1000)
+                        if deb.debug:
+                            print(f"BLOCK_PREDELAY {sc} Δ{dt_last*1000:.1f} ms")
+                            logger.info("BLOCK_PREDELAY %s Δ%.1f ms", sc, dt_last*1000)
                         deb.mark_block()
                         deb.last[sc] = now
                         if deb.win(sc)*1000 < deb.MAX_MS:
                             deb.th[sc] = min(deb.MAX_MS/1000.0, deb.win(sc)+deb.STEP_MS/1000.0)
-                            save_cfg(deb.th)
+                            deb._cfg_dirty = True
+                        deb.maybe_save_cfg(now)
                         deb.inc_up_guard(sc)
                         return 1
                 else:
@@ -625,14 +651,16 @@ def install_hook(deb: Debouncer):
                         deb.mark_repeat()
                         return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
                     else:
-                        if deb.debug: print(f"BLOCK_RATE {sc} Δ{dt_last*1000:.1f} ms")
-                        logger.info("BLOCK_RATE %s Δ%.1f ms", sc, dt_last*1000)
+                        if deb.debug:
+                            print(f"BLOCK_RATE {sc} Δ{dt_last*1000:.1f} ms")
+                            logger.info("BLOCK_RATE %s Δ%.1f ms", sc, dt_last*1000)
                         deb.mark_block()
                         # ВАЖНО: не обновляем last на блокировке частого повтора,
                         # чтобы следующий Δ накапливался от последнего разрешённого DOWN.
                         if deb.win(sc)*1000 < deb.MAX_MS:
                             deb.th[sc] = min(deb.MAX_MS/1000.0, deb.win(sc)+deb.STEP_MS/1000.0)
-                            save_cfg(deb.th)
+                            deb._cfg_dirty = True
+                        deb.maybe_save_cfg(now)
                         deb.inc_up_guard(sc)
                         return 1
 
@@ -652,8 +680,9 @@ def install_hook(deb: Debouncer):
                 if ignore_up:
                     # Не блокируем KEYUP, чтобы не вызывать «залипание» в ОС.
                     # Только усиливаем защитные окна адаптивно и пропускаем событие дальше.
-                    if deb.debug: print(f"NOTE_UP_BOUNCE {sc}")
-                    logger.info("NOTE_UP_BOUNCE %s", sc)
+                    if deb.debug:
+                        print(f"NOTE_UP_BOUNCE {sc}")
+                        logger.info("NOTE_UP_BOUNCE %s", sc)
                     deb.mark_note()
                     deb.inc_up_guard(sc)
                     
