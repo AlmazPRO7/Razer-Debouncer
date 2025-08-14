@@ -515,6 +515,14 @@ def install_hook(deb: Debouncer):
                     # Пост‑UP защита: если новый первый DOWN приходит слишком близко после UP — блокируем как дребезг
                     # Небольшое адаптивное окно после UP для фильтрации послевыборочного дребезга.
                     guard_thr = deb.up_guard_win(sc, vk)
+                    # Если зажат любой модификатор и текущая клавиша — не модификатор,
+                    # ослабляем окно до узкого порога mod_bounce, чтобы аккорды (Ctrl/Shift/Alt/Win + X)
+                    # срабатывали мгновенно, но при этом продолжали резать явный дребезг.
+                    try:
+                        if (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk):
+                            guard_thr = min(guard_thr, deb.mod_bounce)
+                    except Exception:
+                        pass
                     lu = deb.last_up.get(sc)
                     if lu is not None:
                         gap = now - lu
