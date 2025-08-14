@@ -575,8 +575,8 @@ def install_hook(deb: Debouncer):
                         pass
                     # также понемногу уменьшаем персональное пост‑UP окно
                     deb.dec_up_guard(sc)
-                        if deb.debug: print(f"DOWN first sc={sc} vk={vk}")
-                        return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
+                    if deb.debug: print(f"DOWN first sc={sc} vk={vk}")
+                    return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
 
                 # Повторный DOWN до UP
                 dt_last  = now - deb.last.get(sc, now)
