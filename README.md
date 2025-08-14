@@ -24,6 +24,7 @@
 - Обзор ролей/процессов: `AGENTS.md`, папка `agents/`
 - Онлайн‑режим разработки и git: `docs/ONLINE_DEV.md`
 - Рабочий процесс чат ↔ терминал: `docs/CLI_WORKFLOW.md`
+- Профили терминала (Windows Terminal/tmux): `docs/TERMINAL_PROFILES.md`
 
 ## Конфигурация
 - Хранится в `%APPDATA%/bw3_chatter_cfg.json` (персональные пороги и параметры).
