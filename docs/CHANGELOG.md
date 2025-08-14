@@ -3,6 +3,11 @@
 Формат основан на «Keep a Changelog», версии — SemVer.
 
 ## [Unreleased]
+- Добавлена защита единственного экземпляра (Windows Mutex), флаг `--allow-multiple` для отладки.
+- Ускорены аккорды модификаторов (Ctrl/Shift/Alt/Win + X): первый DOWN не задерживается пост‑UP фильтром; флаг `--no-chord-bypass` для отката.
+- Ubuntu/WSL: скрипт `scripts/setup_ubuntu.sh` (Python 3.11, venv, deps), гайд `docs/UBUNTU_SETUP.md`.
+- Тесты и dev‑зависимости: `requirements-dev.txt`, базовый `tests/test_debouncer.py`.
+- Аналитика логов: `scripts/tail_log.sh` (просмотр) и `scripts/analyze_log.py` (сводка `BLOCK_*`).
 - Документация обновлена: README (ключевые возможности, конфигурация), ссылки на `AGENTS.md` и `docs/ONLINE_DEV.md`.
 - Инициализирована структура документации: README, DEVELOPMENT, CONTRIBUTING, ARCHITECTURE, CHANGELOG.
 - Улучшен авто‑повтор: добавлен допуск джиттера (`--repeat-jitter`), исправлено удерживание Backspace.

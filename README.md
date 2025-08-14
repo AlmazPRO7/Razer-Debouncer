@@ -15,6 +15,18 @@
 - Ubuntu/WSL (разработка, автотесты): см. `docs/UBUNTU_SETUP.md` и `docs/WSL_SETUP.md`.
 - Сборка релиза (PyInstaller/Windows): см. раздел «Сборка» в `docs/DEVELOPMENT.md`.
 
+## Параметры CLI
+- `--selftest`: консольный самотест (без WinAPI/GUI) — удобно в WSL/pytest.
+- `--no-startup`: не добавлять программу в автозапуск Windows.
+- `--no-rate-limit-vks CSV`: VK‑коды, для которых не ограничивается интервал автоповтора (по умолчанию `8` — Backspace).
+- `--allow-multiple`: разрешить запуск нескольких копий (по умолчанию запрещено — единственный экземпляр).
+- `--no-chord-bypass`: выключить ускорение аккордов (Ctrl/Shift/Alt/Win + X).
+
+## Логи и анализ
+- Лог: `%APPDATA%/bw3_chatter.log` (Windows пользователь).
+- Просмотр в WSL: `scripts/tail_log.sh` (автоматически найдёт путь и сделает `tail -f`).
+- Сводка блокировок: `python3 scripts/analyze_log.py` (покажет топ `BLOCK_*` событий и проблемные клавиши).
+
 ## Навигация по документации
 - Руководство разработчика: `docs/DEVELOPMENT.md`
 - Разработка через WSL: `docs/WSL_SETUP.md`

@@ -32,9 +32,9 @@ pytest -q
 - Ставит `python3.11` и `python3.11-venv` (на 22.04/20.04 добавляет PPA deadsnakes).
 - Создаёт виртуальное окружение `.venv` на Python 3.11.
 - Устанавливает `requirements.txt` (кроссплатформенные пакеты) и `requirements-dev.txt` (pytest, linters).
+ - Добавляет инструменты анализа логов: используйте `scripts/tail_log.sh` (хвост) и `python3 scripts/analyze_log.py` (сводка).
 
 ## Примечания
 - В `requirements.txt` Windows‑специфичные пакеты помечены маркерами (`sys_platform == "win32"`). В Ubuntu они не устанавливаются.
 - Самотест `--selftest` не требует WinAPI/GUI и запускается в Ubuntu.
 - Для сборки Windows‑бинарей используйте Windows/WSL‑обёртки (см. `docs/WSL_SETUP.md`).
-
