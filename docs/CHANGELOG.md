@@ -3,6 +3,9 @@
 Формат основан на «Keep a Changelog», версии — SemVer.
 
 ## [Unreleased]
+- Chore(repo): вычищены артефакты из репозитория (.codex/, .venv/, build/, dist/, логи/диагностика); уточнён .gitignore.
+- Chore(repo): переписана история для удаления мусорных файлов из прошлых коммитов; добавлен резервный тег before-history-rewrite-YYYYMMDD-HHMMSS.
+- Docs: добавлены инструкции по синхронизации после переписи истории (README), запись в DEV_ERRORS.md.
 - Fix: автозагрузка Windows (HKCU Run) теперь корректно указывает на exe в сборке PyInstaller; при запуске из исходников — на `python.exe` и скрипт.
 - Docs: полное обновление документации (README, ARCHITECTURE, USAGE, CONFIG, TROUBLESHOOTING, RELEASE, AGENTS, QA/Support/Release гайды).
 - Fix: ускорены аккорды — первая немодификаторная клавиша после зажатия/быстрого нажатия модификатора (Ctrl/Shift/Alt/Win) больше не задерживается пост‑UP фильтром; добавлен параметр `--mod-recent` (по умолчанию 80 мс).

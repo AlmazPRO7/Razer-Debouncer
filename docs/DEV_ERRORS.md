@@ -30,3 +30,10 @@
 - Изменения: `scripts/setup_ubuntu.sh`, `requirements-dev.txt`, `docs/UBUNTU_SETUP.md`, базовый `pytest` тест.
 - Итог: окружение готовится одной командой, тесты запускаются в WSL.
 
+## 2025-08-15 — В репозиторий попали лишние артефакты и логи
+- Источник: внутренняя проверка Dev Agent.
+- Симптом: в истории репозитория присутствовали служебные каталоги и диагностические файлы (`.codex/`, `build/`, `dist/`, `.venv/`, `.secrets/`, `~\AppData\Roaming/*`, `fetch*.out/err`, `lsremote*.out/err`, `ssh*.out/err`, `.DS_Store`, `Thumbs.db`).
+- Анализ: часть файлов не была корректно проигнорирована ранее; отдельные логи и проверочные файлы попали в индекс и историю.
+- Изменения: уточнён `.gitignore` (добавлены исключения, оставлена явная поддержка `!bw3_debounce.spec`); выполнена перепись истории `git filter-branch` с удалением артефактов, далее `git reflog expire --expire=now --all` и `git gc --prune=now --aggressive`. Создан резервный тег `before-history-rewrite-YYYYMMDD-HHMMSS`.
+- Итог/проверка: пути выше отсутствуют в выходе `git log --all -- <path>`; размер репозитория уменьшен; HEAD — актуален. Изменения запушены на `origin` с `--force-with-lease`.
+- Инструкция для разработчиков: выполнить `git fetch --all`, затем для основной ветки `git checkout main && git reset --hard origin/main`. Если есть локальные коммиты — перенесите их через `git rebase --onto origin/main <old-base> main` или `git cherry-pick`.
