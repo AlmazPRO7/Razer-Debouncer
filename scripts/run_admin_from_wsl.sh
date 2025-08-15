@@ -8,6 +8,7 @@ WIN_ROOT=$(wslpath -w "$PROJECT_ROOT")
 # Usage:
 #   ./scripts/run_admin_from_wsl.sh --setup
 #   ./scripts/run_admin_from_wsl.sh --build
+#   ./scripts/run_admin_from_wsl.sh --build-na
 #   ./scripts/run_admin_from_wsl.sh -- --debug --no-startup
 
 if [[ $# -eq 0 ]]; then
@@ -24,6 +25,9 @@ case "${1:-}" in
     ;;
   --build)
     "$PS" "${PSFLAGS[@]}" -File "$WIN_ROOT\\scripts\\run_admin.ps1" -Build
+    ;;
+  --build-na)
+    "$PS" "${PSFLAGS[@]}" -File "$WIN_ROOT\\scripts\\run_admin.ps1" -BuildNoAdmin
     ;;
   --)
     shift

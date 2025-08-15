@@ -172,7 +172,7 @@ def set_autostart(on=True):
         name="BW3Debounce"
         if on:
             winreg.SetValueEx(rk,name,0,winreg.REG_SZ,
-                f'"{sys.executable}" "{os.path.abspath(__file__)}"')
+                (f'"{sys.executable}"' if getattr(sys, 'frozen', False) else f'"{sys.executable}" "{os.path.abspath(__file__)}"'))
         else:
             try: winreg.DeleteValue(rk,name)
             except FileNotFoundError: pass

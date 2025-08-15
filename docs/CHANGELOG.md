@@ -3,6 +3,7 @@
 Формат основан на «Keep a Changelog», версии — SemVer.
 
 ## [Unreleased]
+- Fix: автозагрузка Windows (HKCU Run) теперь корректно указывает на exe в сборке PyInstaller; при запуске из исходников — на `python.exe` и скрипт.
 - Docs: полное обновление документации (README, ARCHITECTURE, USAGE, CONFIG, TROUBLESHOOTING, RELEASE, AGENTS, QA/Support/Release гайды).
 - Fix: ускорены аккорды — первая немодификаторная клавиша после зажатия/быстрого нажатия модификатора (Ctrl/Shift/Alt/Win) больше не задерживается пост‑UP фильтром; добавлен параметр `--mod-recent` (по умолчанию 80 мс).
 - Enh: учёт физического состояния модификаторов (GetAsyncKeyState) при определении аккорда; опция `--no-mod-phys-check`.

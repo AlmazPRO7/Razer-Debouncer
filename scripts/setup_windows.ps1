@@ -10,18 +10,34 @@ $req = Join-Path $ProjectRoot 'requirements.txt'
 Write-Host "[setup] Project: $ProjectRoot"
 if (!(Test-Path $venv)) {
     Write-Host "[setup] Creating venv..."
-    & $PythonLauncher -3 -m venv $venv
+    $launcher = $null
+    if (Get-Command $PythonLauncher -ErrorAction SilentlyContinue) { $launcher = $PythonLauncher }
+    elseif (Get-Command python -ErrorAction SilentlyContinue) { $launcher = 'python' }
+    if ($null -eq $launcher) { throw "[setup] Python launcher not found (py/python)." }
+    & $launcher -m venv $venv
 }
 
 Write-Host "[setup] Upgrading pip..."
-& $pythonExe -m pip install --upgrade pip
+if (Test-Path $pythonExe) {
+    & $pythonExe -m pip install --upgrade pip
+} else {
+    & python -m pip install --upgrade pip
+}
 
 if (Test-Path $req) {
     Write-Host "[setup] Installing requirements..."
-    & $pythonExe -m pip install -r $req
+    if (Test-Path $pythonExe) {
+        & $pythonExe -m pip install -r $req
+    } else {
+        & python -m pip install -r $req
+    }
 } else {
     Write-Host "[setup] requirements.txt not found, installing minimal..."
-    & $pythonExe -m pip install Pillow pystray pywin32 pyinstaller
+    if (Test-Path $pythonExe) {
+        & $pythonExe -m pip install Pillow pystray pywin32 pyinstaller
+    } else {
+        & python -m pip install Pillow pystray pywin32 pyinstaller
+    }
 }
 
 Write-Host "[setup] Done."
