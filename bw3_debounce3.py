@@ -226,7 +226,8 @@ class Debouncer:
                  no_rate_limit_vks=None,
                  chord_guard_ms=10,
                  chord_disable_post_up=True,
-                 mod_recent_ms=80):
+                 mod_recent_ms=80,
+                 mod_phys_check=True):
         self.base         = base_ms/1000.0
         self.repeat_delay = (repeat_delay_ms or read_system_repeat_delay_ms())/1000.0
         # Повторный интервал: если не задан, оценим по системному KeyboardSpeed
@@ -254,6 +255,7 @@ class Debouncer:
         # Недавнее нажатие модификатора: окно, в течение которого считаем аккордовым контекстом
         self.mod_recent = max(0.0, mod_recent_ms/1000.0)
         self._last_mod_down = {}  # vk:int -> ts:float
+        self.mod_phys_check = bool(mod_phys_check)
 
         self.th   = load_cfg()   # пороги per‑key (scanCode:str → секунд)
         self.last = {}           # время последнего good DOWN
@@ -601,6 +603,13 @@ def install_hook(deb: Debouncer):
                         is_chord_ctx = (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk)
                     except Exception:
                         is_chord_ctx = False
+                    # Также учитываем физическое состояние модификаторов от ОС (если включено)
+                    if deb.mod_phys_check and (not deb.is_mod(vk)):
+                        try:
+                            if any((user32.GetAsyncKeyState(m) & 0x8000) for m in deb.MODIFIERS):
+                                is_chord_ctx = True
+                        except Exception:
+                            pass
                     # Также считаем аккорд‑контекстом ситуацию, когда модификатор был нажат совсем недавно
                     recent_mod = False
                     if not is_chord_ctx and (not deb.is_mod(vk)):
@@ -689,8 +698,41 @@ def install_hook(deb: Debouncer):
                     return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
 
                 # Обычная (не модификатор)
+                # Определим контекст аккорда (зажат модификатор сейчас или только что)
+                chord_ctx = False
+                recent_mod = False
+                try:
+                    chord_ctx = (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk)
+                except Exception:
+                    chord_ctx = False
+                if not chord_ctx and (not deb.is_mod(vk)):
+                    try:
+                        if deb._last_mod_down:
+                            recent_mod = any((now - t) <= deb.mod_recent for t in deb._last_mod_down.values())
+                    except Exception:
+                        recent_mod = False
+
                 if dt_hold < deb.repeat_delay:
                     # До начала штатного автоповтора Windows:
+                    # В аккордном контексте не блокируем пред‑повторную задержку, режем только явный дребезг
+                    if (chord_ctx or recent_mod):
+                        if dt_last < deb.win(sc):
+                            # дребезг → блок
+                            if deb.debug:
+                                print(f"BLOCK_BOUNCE (CHORD) {sc} Δ{dt_last*1000:.1f} ms")
+                                logger.info("BLOCK_BOUNCE_CHORD %s Δ%.1f ms", sc, dt_last*1000)
+                            deb.mark_block()
+                            deb.last[sc] = now
+                            deb.inc_up_guard(sc)
+                            return 1
+                        else:
+                            # допустим быстрые повторы в аккорде до старта авто‑повтора
+                            if deb.debug:
+                                print(f"PREDELAY_BYPASS (CHORD) {sc} Δ{dt_last*1000:.1f} ms")
+                                logger.info("CHORD_PREDELAY_BYPASS %s Δ%.1f ms", sc, dt_last*1000)
+                            deb.last[sc] = now
+                            return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
+
                     if dt_last < deb.win(sc):
                         # Явный дребезг
                         deb.cnt[sc] = deb.cnt.get(sc,0)+1
@@ -724,6 +766,15 @@ def install_hook(deb: Debouncer):
                         return 1
                 else:
                     # Автоповтор начался
+                    # В аккордном контексте пропускаем повторы без ограничения частоты
+                    if (chord_ctx or recent_mod) and (not deb.is_mod(vk)):
+                        deb.rep_started.add(sc)
+                        deb.last[sc] = now
+                        if deb.debug:
+                            print(f"REPEAT_CHORD {sc} Δ{dt_last*1000:.1f} ms")
+                            logger.info("REPEAT_CHORD %s Δ%.1f ms", sc, dt_last*1000)
+                        deb.mark_repeat()
+                        return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
                     if vk in deb.no_rate_limit_vks:
                         # Для указанных клавиш (например, Backspace) не ограничиваем интервал повтора
                         deb.rep_started.add(sc)
@@ -944,6 +995,8 @@ def main():
     ap.add_argument("--no-startup", action="store_true", help="Не добавлять в автозапуск")
     ap.add_argument("--no-chord-bypass", action="store_true", help="Отключить ускорение аккордов (Ctrl/Shift/Alt/Win + X)")
     ap.add_argument("--mod-recent", type=int, default=80, help="Окно недавнего нажатия модификатора для ускорения аккордов, мс (по умолчанию 80)")
+    ap.add_argument("--no-mod-phys-check", action="store_true", help="Не учитывать физическое состояние модификаторов (GetAsyncKeyState)")
+    ap.add_argument("--mods-instant", action="store_true", help="Профиль: ультра‑быстрые аккорды (mod_bounce≈15мс, chord_guard=0мс, mod_recent≈120мс)")
     ap.add_argument("--no-rate-limit-vks", type=str, default="", help="CSV VK-кодов без ограничения повтора (напр., 8 для Backspace)")
     ap.add_argument("--selftest", action="store_true", help="Запустить самотест без хука/GUI (консольный вывод)")
     ap.add_argument("--allow-multiple", action="store_true", help="Разрешить запуск нескольких копий (отладка)")
@@ -989,10 +1042,19 @@ def main():
         # По умолчанию не ограничиваем автоповтор Backspace (VK=8)
         vks = [8]
 
+    # Профиль ускорения модификаторов (по запросу)
+    mod_bounce = args.mod_bounce
+    chord_guard = 10
+    mod_recent = args.mod_recent
+    if args.mods_instant:
+        mod_bounce = min(mod_bounce, 15)
+        chord_guard = 0
+        mod_recent = max(mod_recent, 120)
+
     deb = Debouncer(base_ms=args.ms,
                     repeat_delay_ms=args.repeat_delay,
                     repeat_min_ms=args.repeat_min,
-                    mod_bounce_ms=args.mod_bounce,
+                    mod_bounce_ms=mod_bounce,
                     post_up_guard_ms=args.post_up_guard,
                     up_bounce_ms=args.up_bounce,
                     down_guard_ms=args.down_guard,
@@ -1002,7 +1064,9 @@ def main():
                     no_rate_limit_vks=vks,
                     debug=args.debug,
                     chord_disable_post_up=(not args.no_chord_bypass),
-                    mod_recent_ms=args.mod_recent)
+                    mod_recent_ms=mod_recent,
+                    chord_guard_ms=chord_guard,
+                    mod_phys_check=(not args.no_mod_phys_check))
 
     hook_id = install_hook(deb)
     if not hook_id:

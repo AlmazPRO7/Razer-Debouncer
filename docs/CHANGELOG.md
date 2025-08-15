@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 - Fix: ускорены аккорды — первая немодификаторная клавиша после зажатия/быстрого нажатия модификатора (Ctrl/Shift/Alt/Win) больше не задерживается пост‑UP фильтром; добавлен параметр `--mod-recent` (по умолчанию 80 мс).
+- Enh: учёт физического состояния модификаторов (GetAsyncKeyState) при определении аккорда; опция `--no-mod-phys-check`.
+- Enh: профиль `--mods-instant` для ультра‑быстрых аккордов (уменьшает `mod_bounce`, обнуляет `chord_guard`, расширяет окно `mod_recent`).
 - Добавлена защита единственного экземпляра (Windows Mutex), флаг `--allow-multiple` для отладки.
 - Ускорены аккорды модификаторов (Ctrl/Shift/Alt/Win + X): первый DOWN не задерживается пост‑UP фильтром; флаг `--no-chord-bypass` для отката.
 - Ubuntu/WSL: скрипт `scripts/setup_ubuntu.sh` (Python 3.11, venv, deps), гайд `docs/UBUNTU_SETUP.md`.
