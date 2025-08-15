@@ -337,6 +337,40 @@ class Debouncer:
                 self._last_mod_down[vk] = now
         except Exception:
             pass
+    def mods_physically_down(self):
+        if not self.mod_phys_check:
+            return set()
+        try:
+            if user32 is None:
+                return set()
+            down = set()
+            for m in self.MODIFIERS:
+                try:
+                    if user32.GetAsyncKeyState(m) & 0x8000:
+                        down.add(m)
+                except Exception:
+                    pass
+            return down
+        except Exception:
+            return set()
+    def chord_context(self, current_vk, now):
+        # Возвращает (chord_ctx, recent_mod)
+        if self.is_mod(current_vk):
+            return False, False
+        active_mods = set()
+        try:
+            active_mods.update(v for v in self.pressed_vk if v in self.MODIFIERS)
+        except Exception:
+            pass
+        active_mods.update(self.mods_physically_down())
+        chord_ctx = len(active_mods) > 0
+        recent_mod = False
+        try:
+            if self._last_mod_down:
+                recent_mod = any((now - t) <= self.mod_recent for t in self._last_mod_down.values())
+        except Exception:
+            recent_mod = False
+        return chord_ctx, recent_mod
     def up_guard_win(self, sc, vk):
         if self.is_mod(vk):
             return self.mod_bounce
@@ -698,19 +732,8 @@ def install_hook(deb: Debouncer):
                     return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
 
                 # Обычная (не модификатор)
-                # Определим контекст аккорда (зажат модификатор сейчас или только что)
-                chord_ctx = False
-                recent_mod = False
-                try:
-                    chord_ctx = (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk)
-                except Exception:
-                    chord_ctx = False
-                if not chord_ctx and (not deb.is_mod(vk)):
-                    try:
-                        if deb._last_mod_down:
-                            recent_mod = any((now - t) <= deb.mod_recent for t in deb._last_mod_down.values())
-                    except Exception:
-                        recent_mod = False
+                # Определим контекст аккорда/недавнего модификатора с учётом физического состояния
+                chord_ctx, recent_mod = deb.chord_context(vk, now)
 
                 if dt_hold < deb.repeat_delay:
                     # До начала штатного автоповтора Windows:

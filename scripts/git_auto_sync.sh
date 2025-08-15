@@ -41,8 +41,18 @@ fi
 BR="$(git rev-parse --abbrev-ref HEAD)"
 export GIT_SSH_COMMAND=${GIT_SSH_COMMAND:-"ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"}
 
+# Ensure origin remote exists
+if ! git remote get-url origin >/dev/null 2>&1; then
+  if [[ -n "${GITHUB_SSH_URL:-}" ]] && [[ -x "$HERE/git_remote_setup.sh" ]]; then
+    echo "[auto-sync] setting up origin from GITHUB_SSH_URL=$GITHUB_SSH_URL"
+    GITHUB_SSH_URL="$GITHUB_SSH_URL" "$HERE/git_remote_setup.sh"
+  else
+    echo "[auto-sync] remote 'origin' not set; set GITHUB_SSH_URL env and rerun to auto-configure" >&2
+  fi
+fi
+
 echo "[auto-sync] fetching origin..."
-git fetch origin --prune
+git fetch origin --prune || { echo "[auto-sync] fetch failed (origin missing?)" >&2; exit 0; }
 
 # If current branch tracks origin, rebase
 UPSTREAM="origin/${BR}"
@@ -70,4 +80,3 @@ else
 fi
 
 echo "[auto-sync] done"
-
