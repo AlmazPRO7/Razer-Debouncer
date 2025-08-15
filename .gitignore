@@ -3,12 +3,14 @@ __pycache__/
 build/
 dist/
 *.spec
+!bw3_debounce.spec
 *.pyc
 .pytest_cache/
 .DS_Store
 Thumbs.db
 .secrets/
 .ssh/
+.codex/
 # Local diagnostic outputs (network/git checks)
 fetch*.out
 fetch*.err
@@ -16,3 +18,9 @@ lsremote*.out
 lsremote*.err
 ssh*.out
 ssh*.err
+ 
+# Mistakenly added Windows path-like folder
+~\\AppData\\Roaming/
+
+# Local sandbox probe file
+sandbox_write_check.txt
