@@ -225,7 +225,8 @@ class Debouncer:
                  repeat_jitter_ms=5,
                  no_rate_limit_vks=None,
                  chord_guard_ms=10,
-                 chord_disable_post_up=True):
+                 chord_disable_post_up=True,
+                 mod_recent_ms=80):
         self.base         = base_ms/1000.0
         self.repeat_delay = (repeat_delay_ms or read_system_repeat_delay_ms())/1000.0
         # Повторный интервал: если не задан, оценим по системному KeyboardSpeed
@@ -250,6 +251,9 @@ class Debouncer:
         # Минимальное окно пост‑UP при зажатом модификаторе (для аккордов Ctrl/Shift/Alt/Win + X)
         self.chord_guard  = max(0.0, chord_guard_ms/1000.0)
         self.chord_disable_post_up = bool(chord_disable_post_up)
+        # Недавнее нажатие модификатора: окно, в течение которого считаем аккордовым контекстом
+        self.mod_recent = max(0.0, mod_recent_ms/1000.0)
+        self._last_mod_down = {}  # vk:int -> ts:float
 
         self.th   = load_cfg()   # пороги per‑key (scanCode:str → секунд)
         self.last = {}           # время последнего good DOWN
@@ -325,6 +329,12 @@ class Debouncer:
                 return self.th[base]
         return self.base
     def is_mod(self, vk): return vk in self.MODIFIERS
+    def mark_mod_down(self, vk, now):
+        try:
+            if self.is_mod(vk):
+                self._last_mod_down[vk] = now
+        except Exception:
+            pass
     def up_guard_win(self, sc, vk):
         if self.is_mod(vk):
             return self.mod_bounce
@@ -579,6 +589,9 @@ def install_hook(deb: Debouncer):
 
             if is_down:
                 if sc not in deb.pressed:
+                    # Если это модификатор — отметим время, чтобы ускорить почти одновременные аккорды
+                    if deb.is_mod(vk):
+                        deb.mark_mod_down(vk, now)
                     # Пост‑UP защита: если новый первый DOWN приходит слишком близко после UP — блокируем как дребезг
                     # Небольшое адаптивное окно после UP для фильтрации послевыборочного дребезга.
                     guard_thr = deb.up_guard_win(sc, vk)
@@ -588,10 +601,27 @@ def install_hook(deb: Debouncer):
                         is_chord_ctx = (not deb.is_mod(vk)) and any((m in deb.MODIFIERS) for m in deb.pressed_vk)
                     except Exception:
                         is_chord_ctx = False
+                    # Также считаем аккорд‑контекстом ситуацию, когда модификатор был нажат совсем недавно
+                    recent_mod = False
+                    if not is_chord_ctx and (not deb.is_mod(vk)):
+                        try:
+                            if deb._last_mod_down:
+                                # есть ли недавний mod DOWN (в пределах mod_recent)
+                                recent_mod = any((now - t) <= deb.mod_recent for t in deb._last_mod_down.values())
+                        except Exception:
+                            recent_mod = False
                     if is_chord_ctx and deb.chord_disable_post_up:
                         # В аккордах полностью отключаем пост‑UP блок для первого DOWN — максимальная отзывчивость
                         try:
                             logger.info("CHORD_BYPASS %s", sc)
+                        except Exception:
+                            pass
+                    elif recent_mod and deb.chord_disable_post_up:
+                        # Почти одновременное нажатие: считаем аккордом и тоже отключаем пост‑UP фильтр
+                        if deb.debug:
+                            print(f"CHORD_BYPASS_RECENT {sc}")
+                        try:
+                            logger.info("CHORD_BYPASS_RECENT %s", sc)
                         except Exception:
                             pass
                     else:
@@ -655,6 +685,7 @@ def install_hook(deb: Debouncer):
                         return 1
                     # всё остальное — пропускаем; модификаторы сами по себе действий не вызывают
                     deb.last[sc] = now
+                    deb.mark_mod_down(vk, now)
                     return user32.CallNextHookEx(hook_id, nCode, wParam, lParam)
 
                 # Обычная (не модификатор)
@@ -912,6 +943,7 @@ def main():
     ap.add_argument("--up-guard-step", type=int, default=7, help="Шаг изменения пост‑UP окна, мс")
     ap.add_argument("--no-startup", action="store_true", help="Не добавлять в автозапуск")
     ap.add_argument("--no-chord-bypass", action="store_true", help="Отключить ускорение аккордов (Ctrl/Shift/Alt/Win + X)")
+    ap.add_argument("--mod-recent", type=int, default=80, help="Окно недавнего нажатия модификатора для ускорения аккордов, мс (по умолчанию 80)")
     ap.add_argument("--no-rate-limit-vks", type=str, default="", help="CSV VK-кодов без ограничения повтора (напр., 8 для Backspace)")
     ap.add_argument("--selftest", action="store_true", help="Запустить самотест без хука/GUI (консольный вывод)")
     ap.add_argument("--allow-multiple", action="store_true", help="Разрешить запуск нескольких копий (отладка)")
@@ -969,7 +1001,8 @@ def main():
                     repeat_jitter_ms=args.repeat_jitter,
                     no_rate_limit_vks=vks,
                     debug=args.debug,
-                    chord_disable_post_up=(not args.no_chord_bypass))
+                    chord_disable_post_up=(not args.no_chord_bypass),
+                    mod_recent_ms=args.mod_recent)
 
     hook_id = install_hook(deb)
     if not hook_id:

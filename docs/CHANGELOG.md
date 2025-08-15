@@ -3,6 +3,7 @@
 Формат основан на «Keep a Changelog», версии — SemVer.
 
 ## [Unreleased]
+- Fix: ускорены аккорды — первая немодификаторная клавиша после зажатия/быстрого нажатия модификатора (Ctrl/Shift/Alt/Win) больше не задерживается пост‑UP фильтром; добавлен параметр `--mod-recent` (по умолчанию 80 мс).
 - Добавлена защита единственного экземпляра (Windows Mutex), флаг `--allow-multiple` для отладки.
 - Ускорены аккорды модификаторов (Ctrl/Shift/Alt/Win + X): первый DOWN не задерживается пост‑UP фильтром; флаг `--no-chord-bypass` для отката.
 - Ubuntu/WSL: скрипт `scripts/setup_ubuntu.sh` (Python 3.11, venv, deps), гайд `docs/UBUNTU_SETUP.md`.
