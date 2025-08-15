@@ -55,3 +55,16 @@ TMUX= tmux attach -t razer_debounce
 - Если команда Codex другая — задайте `CODEX_CMD` (например, путь к исполняемому файлу).
 - В WSL используйте `wslview` для открытия внешних ссылок из консоли.
 - Убедитесь, что SSH‑ключи настроены (см. `docs/ONLINE_DEV.md`).
+
+## Кириллица и Юникод (UTF‑8)
+- PowerShell/Windows:
+  - Загрузите окружение: `.\scripts\codex_env.ps1` — скрипт установит UTF‑8 кодировку консоли (`chcp 65001`) и Python (`PYTHONIOENCODING=utf-8`).
+  - В Windows Terminal используйте шрифт с поддержкой кириллицы (напр., Cascadia Mono/Code, Consolas).
+- Bash/WSL:
+  - Загрузите окружение: `source scripts/codex_env.sh` — устанавливает `LANG/LC_ALL=C.UTF-8`, `PYTHONIOENCODING=utf-8`.
+  - Проверьте `locale` — значения должны быть `UTF-8`.
+- Git/less:
+  - Пейджер установлен на `less -R`, переменная `LESSCHARSET=utf-8`.
+  - При необходимости: `git config --global i18n.commitEncoding utf-8` и `git config --global i18n.logOutputEncoding utf-8`.
+
+Если отдельные символы (например, неразрывный дефис `U+2011`) отображаются квадратами, смените шрифт терминала или используйте обычный дефис `-`.
